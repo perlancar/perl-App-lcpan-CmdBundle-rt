@@ -62,13 +62,15 @@ sub handle_cmd {
         }
         $file_id or do { $envres->add_result(404, "No such module/dist '$module_or_dist'"); next ARG };
 
+        # XXX we need to scrape instead, REST requires credentials
+
         my $query = "Queue='$dist' AND (Status='new' OR Status='open')";
         my $url = "https://rt.cpan.org/REST/1.0/search/ticket?query=".URI::Escape::uri_escape($query);
-        say "D:url=<$url>";
+        #say "D:url=<$url>";
         my $htres = HTTP::Tiny->new->get($url);
         $htres->{success} or do { $envres->add_result(500, "Can't fetch ticket for dist '$dist': $htres->{status} $htres->{reason}"); next ARG };
         my $count = 0;
-        say "D:content=<$htres->{content}>";
+        #say "D:content=<$htres->{content}>";
         while ($htres->{content} =~ /^(\d+): (.+)/mg) {
             if ($args{count}) {
                 $count++;
