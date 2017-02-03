@@ -16,21 +16,26 @@ our %SPEC;
 
 $SPEC{handle_cmd} = {
     v => 1.1,
-    summary => 'Return RT new/open tickets for dist/module',
+    summary => 'Return RT tickets for dist/module',
     args => {
         %App::lcpan::common_args,
         %App::lcpan::mods_or_dists_args,
+        type => {
+            schema => ['str*', in=>[qw/Active Resolved Rejected/]],
+            default => 'Active',
+        },
         count => {
+            summary => 'Instead of listing each ticket, return ticket count for each distribution',
             schema => ['bool*', is=>1],
             cmdline_aliases => {c=>{}},
         },
     },
 };
 sub handle_cmd {
-    require HTTP::Tiny;
-    require URI::Escape;
+    require WWW::RT::CPAN;
 
     my %args = @_;
+    my $type = $args{type};
 
     my $state = App::lcpan::_init(\%args, 'ro');
     my $dbh = $state->{dbh};
@@ -42,7 +47,7 @@ sub handle_cmd {
     if ($args{count}) {
         $resmeta->{'table.fields'} = [qw/dist count/];
     } else {
-        $resmeta->{'table.fields'} = [qw/dist ticket_id ticket_subject/];
+        $resmeta->{'table.fields'} = [qw/dist ticket_id ticket_title ticket_status/];
     }
 
   ARG:
@@ -62,20 +67,22 @@ sub handle_cmd {
         }
         $file_id or do { $envres->add_result(404, "No such module/dist '$module_or_dist'"); next ARG };
 
-        # XXX we need to scrape instead, REST requires credentials
+        my $res;
+        if ($type eq 'Resolved') {
+            $res = WWW::RT::CPAN::list_dist_resolved_tickets(dist => $dist);
+        } elsif ($type eq 'Rejected') {
+            $res = WWW::RT::CPAN::list_dist_rejected_tickets(dist => $dist);
+        } else {
+            $res = WWW::RT::CPAN::list_dist_active_tickets(dist => $dist);
+        }
 
-        my $query = "Queue='$dist' AND (Status='new' OR Status='open')";
-        my $url = "https://rt.cpan.org/REST/1.0/search/ticket?query=".URI::Escape::uri_escape($query);
-        #say "D:url=<$url>";
-        my $htres = HTTP::Tiny->new->get($url);
-        $htres->{success} or do { $envres->add_result(500, "Can't fetch ticket for dist '$dist': $htres->{status} $htres->{reason}"); next ARG };
+        $res->[0] == 200 or do { $envres->add_result(500, "Can't fetch ticket for dist '$dist'", $res); next ARG };
         my $count = 0;
-        #say "D:content=<$htres->{content}>";
-        while ($htres->{content} =~ /^(\d+): (.+)/mg) {
+        for my $t (@{ $res->[2] }) {
             if ($args{count}) {
                 $count++;
             } else {
-                push @res, {dist=>$dist, ticket_id=>$1, ticket_subject=>$2};
+                push @res, {dist=>$dist, ticket_id=>$t->{id}, ticket_title=>$t->{title}, ticket_status=>$t->{status}};
             }
         }
         if ($args{count}) {
