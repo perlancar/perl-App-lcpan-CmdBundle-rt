@@ -7,7 +7,7 @@ use 5.010001;
 use strict;
 use warnings;
 no warnings 'once';
-use Log::Any::IfLOG '$log';
+use Log::ger;
 
 require App::lcpan;
 use Perinci::Object;
