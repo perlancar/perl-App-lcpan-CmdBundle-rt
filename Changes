@@ -1,17 +1,17 @@
-0.003   2017-07-10 (PERLANCAR)
+0.003   2017-07-10  Released-By: PERLANCAR
 
 	- No functional changes.
 
 	- Replace Log::Any with Log::ger.
 
 
-0.002   2017-02-02 (PERLANCAR)
+0.002   2017-02-02  Released-By: PERLANCAR
 
         - No functional changes.
 
         - [build] Rebuild with updated Perinci::To::Doc (0.82).
 
 
-0.001   2017-02-02 (PERLANCAR)
+0.001   2017-02-02  Released-By: PERLANCAR
 
         - First release.
